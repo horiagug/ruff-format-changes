@@ -15,14 +15,12 @@ import (
 func setupTestRepo(t *testing.T) string {
 	tmpDir := t.TempDir()
 
-	// Initialize git repo
 	cmd := exec.Command("git", "init")
 	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to initialize git repo: %v", err)
 	}
 
-	// Configure git
 	gitConfig := [][]string{
 		{"git", "config", "user.email", "test@example.com"},
 		{"git", "config", "user.name", "Test User"},
@@ -33,7 +31,6 @@ func setupTestRepo(t *testing.T) string {
 		cmd.Run()
 	}
 
-	// Create initial commit with Python file
 	pyFile := filepath.Join(tmpDir, "main.py")
 	if err := os.WriteFile(pyFile, []byte("def hello():\n    print('hello')\n"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
@@ -51,24 +48,20 @@ func setupTestRepo(t *testing.T) string {
 		t.Fatalf("Failed to commit: %v", err)
 	}
 
-	// Create main branch explicitly (for older git versions)
 	cmd = exec.Command("git", "branch", "-M", "main")
 	cmd.Dir = tmpDir
-	cmd.Run() // Ignore error if it fails (git might already be on main)
+	cmd.Run()
 
-	// Create feature branch
 	cmd = exec.Command("git", "checkout", "-b", "feature/test")
 	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to create feature branch: %v", err)
 	}
 
-	// Modify the Python file
 	if err := os.WriteFile(pyFile, []byte("def hello():\n    print( 'hello' )\n"), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 
-	// Create another Python file
 	utilsFile := filepath.Join(tmpDir, "utils.py")
 	if err := os.WriteFile(utilsFile, []byte("def util(  ):\n    pass\n"), 0644); err != nil {
 		t.Fatalf("Failed to create utils file: %v", err)
@@ -93,7 +86,6 @@ func setupTestRepo(t *testing.T) string {
 func TestEndToEndWithRealGit(t *testing.T) {
 	tmpDir := setupTestRepo(t)
 
-	// Change to the temp directory
 	oldCwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
@@ -104,13 +96,11 @@ func TestEndToEndWithRealGit(t *testing.T) {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
 
-	// Initialize git client
 	gitClient, err := git.New(true)
 	if err != nil {
 		t.Fatalf("Failed to create git client: %v", err)
 	}
 
-	// Get current branch
 	currentBranch, err := gitClient.GetCurrentBranch()
 	if err != nil {
 		t.Fatalf("Failed to get current branch: %v", err)
@@ -118,7 +108,6 @@ func TestEndToEndWithRealGit(t *testing.T) {
 
 	t.Logf("Current branch: %s", currentBranch)
 
-	// Get changed files compared to main
 	changedFiles, err := gitClient.GetChangedFiles("main")
 	if err != nil {
 		t.Fatalf("Failed to get changed files: %v", err)
@@ -126,11 +115,9 @@ func TestEndToEndWithRealGit(t *testing.T) {
 
 	t.Logf("Changed files: %v", changedFiles)
 
-	// Should have Python files
 	if len(changedFiles) == 0 {
 		t.Logf("No changed files found (this might be expected if git diff returns empty)")
 	} else {
-		// Verify Python files are present
 		hasPyFile := false
 		for _, f := range changedFiles {
 			if strings.HasSuffix(f, ".py") {
@@ -163,15 +150,12 @@ func TestGetChangedFilesDetectsModified(t *testing.T) {
 		t.Fatalf("Failed to create git client: %v", err)
 	}
 
-	// The feature branch should have modified files
 	changedFiles, err := gitClient.GetChangedFiles("main")
 	if err != nil {
-		// This might fail if the three-dot diff doesn't work in this context
 		t.Logf("Could not get changed files with three-dot syntax: %v", err)
 		return
 	}
 
-	// Filter for Python files only
 	var pyFiles []string
 	for _, f := range changedFiles {
 		if strings.HasSuffix(f, ".py") {
@@ -264,9 +248,6 @@ func TestRuffObjectCreation(t *testing.T) {
 			if r == nil {
 				t.Fatalf("Expected Ruff object, got nil")
 			}
-
-			// Note: We can't directly access private fields, but we can call methods
-			// This test mainly verifies the constructor works
 		})
 	}
 }

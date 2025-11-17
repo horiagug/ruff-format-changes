@@ -9,10 +9,8 @@ import (
 )
 
 func TestNewGitNotInRepository(t *testing.T) {
-	// Create a temp directory that is not a git repo
 	tmpDir := t.TempDir()
 
-	// Change to the temp directory
 	oldCwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
@@ -23,7 +21,6 @@ func TestNewGitNotInRepository(t *testing.T) {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
 
-	// Try to create Git instance (should fail)
 	_, err = New(false)
 	if err == nil {
 		t.Errorf("Expected error when not in git repo, got nil")
@@ -34,17 +31,14 @@ func TestNewGitNotInRepository(t *testing.T) {
 }
 
 func TestNewGitInRepository(t *testing.T) {
-	// Create a temporary git repository
 	tmpDir := t.TempDir()
 
-	// Initialize git repo
 	cmd := exec.Command("git", "init")
 	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to initialize git repo: %v", err)
 	}
 
-	// Configure git user (required for some operations)
 	gitConfig := [][]string{
 		{"git", "config", "user.email", "test@example.com"},
 		{"git", "config", "user.name", "Test User"},
@@ -55,7 +49,6 @@ func TestNewGitInRepository(t *testing.T) {
 		cmd.Run()
 	}
 
-	// Change to the temp directory
 	oldCwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
@@ -66,13 +59,11 @@ func TestNewGitInRepository(t *testing.T) {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
 
-	// Try to create Git instance (should succeed)
 	g, err := New(false)
 	if err != nil {
 		t.Fatalf("Expected no error in git repo, got %v", err)
 	}
 
-	// Verify repo root is set correctly
 	if !strings.Contains(g.repoRoot, tmpDir) {
 		t.Errorf("Expected repoRoot to contain %s, got %s", tmpDir, g.repoRoot)
 	}
@@ -81,14 +72,12 @@ func TestNewGitInRepository(t *testing.T) {
 func TestGetCurrentBranchInGitRepo(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Initialize git repo
 	cmd := exec.Command("git", "init")
 	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to initialize git repo: %v", err)
 	}
 
-	// Configure git
 	gitConfig := [][]string{
 		{"git", "config", "user.email", "test@example.com"},
 		{"git", "config", "user.name", "Test User"},
@@ -99,7 +88,6 @@ func TestGetCurrentBranchInGitRepo(t *testing.T) {
 		cmd.Run()
 	}
 
-	// Create initial commit
 	testFile := filepath.Join(tmpDir, "test.txt")
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
@@ -117,7 +105,6 @@ func TestGetCurrentBranchInGitRepo(t *testing.T) {
 		t.Fatalf("Failed to commit: %v", err)
 	}
 
-	// Change to the temp directory
 	oldCwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
@@ -138,7 +125,6 @@ func TestGetCurrentBranchInGitRepo(t *testing.T) {
 		t.Fatalf("Failed to get current branch: %v", err)
 	}
 
-	// The default branch is 'master' on older git or 'main' on newer versions
 	if branch != "master" && branch != "main" {
 		t.Errorf("Expected 'master' or 'main', got %s", branch)
 	}

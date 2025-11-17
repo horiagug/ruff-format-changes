@@ -68,7 +68,6 @@ func (r *Ruff) FormatFilesByLineRanges(fileChanges []git.FileChanges) error {
 		}
 	}
 
-	// Format each file with its changed line ranges
 	for _, fc := range fileChanges {
 		absPath := filepath.Join(r.repoRoot, fc.FilePath)
 
@@ -88,18 +87,14 @@ func (r *Ruff) FormatFilesByLineRanges(fileChanges []git.FileChanges) error {
 
 // formatFileWithRange formats a specific line range in a file
 func (r *Ruff) formatFileWithRange(filePath string, lineRange git.LineRange) error {
-	// Build ruff command with --range argument
 	args := []string{"format"}
 
 	if r.dryRun {
 		args = append(args, "--check", "--diff")
 	}
 
-	// Add the range argument: --range 12:15 or --range 12 for single line
-	// Format is start_line-end_line (1-based, as per ruff spec)
 	rangeArg := formatRangeArg(lineRange.Start, lineRange.End)
 	args = append(args, "--range", rangeArg)
-
 	args = append(args, filePath)
 
 	if r.verbose {
@@ -109,28 +104,22 @@ func (r *Ruff) formatFileWithRange(filePath string, lineRange git.LineRange) err
 	cmd := exec.Command("ruff", args...)
 	cmd.Dir = r.repoRoot
 
-	// Capture output
 	output, err := cmd.CombinedOutput()
 
 	if len(output) > 0 {
 		fmt.Println(string(output))
 	}
 
-	// ruff format returns 0 on success
-	// ruff format --check returns 1 if files would be changed (this is expected)
 	if err != nil && r.dryRun {
-		// With --check, exit code 1 means files would be reformatted (expected behavior)
 		if strings.Contains(string(output), "would be reformatted") ||
 			strings.Contains(string(output), "would reformat") {
 			return nil
 		}
-		// Check for actual ruff errors
 		if strings.Contains(string(output), "error:") {
 			return fmt.Errorf("ruff format failed: %w", err)
 		}
 		return nil
 	} else if err != nil && !r.dryRun {
-		// In non-dry-run mode, only some exit codes are errors
 		if strings.Contains(string(output), "error:") {
 			return fmt.Errorf("ruff format failed: %w", err)
 		}
@@ -140,8 +129,7 @@ func (r *Ruff) formatFileWithRange(filePath string, lineRange git.LineRange) err
 	return nil
 }
 
-// formatRangeArg formats the range argument for ruff format
-// Returns format like "12:15" or "12" for single line
+// formatRangeArg formats the range argument for ruff format (e.g., "12:15" or "12")
 func formatRangeArg(start, end int) string {
 	if start == end {
 		return strconv.Itoa(start)
