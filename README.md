@@ -18,7 +18,7 @@ When working on feature branches, you might want to format only the specific lin
 ## Installation
 
 ```bash
-go install github.com/horiagug/ruff-format-changes@latest
+go install github.com/horiagug/ruff-format-changes/cmd/ruff-format-changes@latest
 ```
 
 Or build from source:
@@ -86,7 +86,3 @@ go build -o ruff-format-changes ./cmd/ruff-format-changes
 # Run locally
 ./ruff-format-changes --help
 ```
-
-## License
-
-MIT
