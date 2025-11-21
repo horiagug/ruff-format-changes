@@ -399,7 +399,8 @@ func TestParseUnifiedDiffAddedLinesWithContext(t *testing.T) {
 func TestParseUnifiedDiffDeletedLines(t *testing.T) {
 	// Deleted lines don't contribute to added line ranges
 	// Hunk starts at new line 1: context, deleted (doesn't increment new line counter), added
-	diff := "@@ -1,3 +1,2 @@\n -\n+\n "
+	// Note: deleted line (prefixed with -) does not affect the new line counter
+	diff := "@@ -1,3 +1,2 @@\n context\n-deleted\n+added\n "
 	ranges, err := parseUnifiedDiff(diff)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -407,8 +408,8 @@ func TestParseUnifiedDiffDeletedLines(t *testing.T) {
 	if len(ranges) != 1 {
 		t.Errorf("Expected 1 range, got %d", len(ranges))
 	}
-	if ranges[0].Start != 1 || ranges[0].End != 1 {
-		t.Errorf("Expected range [1, 1], got [%d, %d]", ranges[0].Start, ranges[0].End)
+	if ranges[0].Start != 2 || ranges[0].End != 2 {
+		t.Errorf("Expected range [2, 2], got [%d, %d]", ranges[0].Start, ranges[0].End)
 	}
 }
 

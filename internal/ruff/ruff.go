@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -71,7 +72,15 @@ func (r *Ruff) FormatFilesByLineRanges(fileChanges []git.FileChanges) error {
 	for _, fc := range fileChanges {
 		absPath := filepath.Join(r.repoRoot, fc.FilePath)
 
-		for _, lineRange := range fc.LineRanges {
+		// Sort line ranges in descending order (highest line numbers first)
+		// This prevents earlier format operations from shifting line numbers of later ranges
+		sortedRanges := make([]git.LineRange, len(fc.LineRanges))
+		copy(sortedRanges, fc.LineRanges)
+		sort.Slice(sortedRanges, func(i, j int) bool {
+			return sortedRanges[i].Start > sortedRanges[j].Start
+		})
+
+		for _, lineRange := range sortedRanges {
 			if err := r.formatFileWithRange(absPath, lineRange); err != nil {
 				return err
 			}

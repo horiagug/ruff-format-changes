@@ -166,7 +166,7 @@ func parseUnifiedDiff(diff string) ([]LineRange, error) {
 		}
 
 		if len(line) > 0 {
-			prefix := line
+			prefix := line[0:1]
 
 			switch prefix {
 			case "+":
