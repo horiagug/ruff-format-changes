@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -50,28 +51,53 @@ func (g *Git) GetCurrentBranch() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// GetChangedFiles returns the list of changed Python files compared to base branch
+// GetChangedFiles returns the list of changed Python files compared to base branch,
+// including both tracked changes and untracked files
 func (g *Git) GetChangedFiles(baseBranch string) ([]string, error) {
+	// Get tracked changes
 	cmd := exec.Command("git", "diff", "--name-only", baseBranch)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get changed files: %w", err)
 	}
 
-	if len(output) == 0 {
+	fileMap := make(map[string]bool) // Use map to avoid duplicates
+	if len(output) > 0 {
+		files := strings.Split(strings.TrimSpace(string(output)), "\n")
+		for _, file := range files {
+			if strings.HasSuffix(file, ".py") {
+				fileMap[file] = true
+			}
+		}
+	}
+
+	// Get untracked files
+	cmd = exec.Command("git", "ls-files", "--others", "--exclude-standard")
+	output, err = cmd.Output()
+	if err != nil {
+		if g.verbose {
+			fmt.Printf("Warning: could not get untracked files: %v\n", err)
+		}
+	} else if len(output) > 0 {
+		files := strings.Split(strings.TrimSpace(string(output)), "\n")
+		for _, file := range files {
+			if strings.HasSuffix(file, ".py") {
+				fileMap[file] = true
+			}
+		}
+	}
+
+	if len(fileMap) == 0 {
 		if g.verbose {
 			fmt.Println("No changed files found")
 		}
 		return []string{}, nil
 	}
 
-	files := strings.Split(strings.TrimSpace(string(output)), "\n")
-
+	// Convert map to slice
 	var pyFiles []string
-	for _, file := range files {
-		if strings.HasSuffix(file, ".py") {
-			pyFiles = append(pyFiles, file)
-		}
+	for file := range fileMap {
+		pyFiles = append(pyFiles, file)
 	}
 
 	return pyFiles, nil
@@ -118,8 +144,53 @@ func (g *Git) GetChangedLineRanges(baseBranch string) ([]FileChanges, error) {
 	return fileChangesList, nil
 }
 
+// isFileUntracked checks if a file is untracked (not in git index)
+func (g *Git) isFileUntracked(filePath string) (bool, error) {
+	cmd := exec.Command("git", "ls-files", "--others", "--exclude-standard", filePath)
+	output, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+	return len(output) > 0, nil
+}
+
+// getFileLineCount returns the total number of lines in a file
+func getFileLineCount(filePath string) (int, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return 0, err
+	}
+	lines := strings.Count(string(content), "\n")
+	if len(content) > 0 && !strings.HasSuffix(string(content), "\n") {
+		lines++
+	}
+	return lines, nil
+}
+
 // getFileLineRanges extracts the changed line ranges for a single file using git diff
+// For untracked files, returns the entire file range
 func (g *Git) getFileLineRanges(baseBranch, filePath string) ([]LineRange, error) {
+	// Check if file is untracked
+	untracked, err := g.isFileUntracked(filePath)
+	if err != nil {
+		if g.verbose {
+			fmt.Printf("Warning: Could not determine if %s is untracked: %v\n", filePath, err)
+		}
+	}
+
+	if untracked {
+		// For untracked files, format the entire file
+		lineCount, err := getFileLineCount(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count lines in %s: %w", filePath, err)
+		}
+		if lineCount == 0 {
+			return []LineRange{}, nil
+		}
+		return []LineRange{{Start: 1, End: lineCount}}, nil
+	}
+
+	// For tracked files, use git diff to find changed lines
 	cmd := exec.Command("git", "diff", baseBranch, "--", filePath)
 	output, err := cmd.Output()
 	if err != nil {
